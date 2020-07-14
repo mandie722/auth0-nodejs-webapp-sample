@@ -88,7 +88,7 @@ router.get('/mfa_callback', async (req, res) => {
       code: req.query.code,
       redirect_uri: returnTo
     });
-    console.log(`[mfa_callback] oauth token response: ${JSON.stringify(response)}`);
+    console.log(`[mfa_callback] oauth token response: ${JSON.stringify(response, null, 4)}`);
   } catch (error) {
     console.log(`[mfa_callback] Error getting oauth token: ${JSON.stringify(error)}`);
   }
