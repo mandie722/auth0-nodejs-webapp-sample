@@ -3,6 +3,7 @@ var router = express.Router();
 var passport = require('passport');
 var dotenv = require('dotenv');
 var util = require('util');
+var bent = require('bent');
 var url = require('url');
 var querystring = require('querystring');
 
@@ -17,6 +18,7 @@ router.get('/login', passport.authenticate('auth0', {
 
 // Perform the final stage of authentication and redirect to previously requested URL or '/user'
 router.get('/callback', function (req, res, next) {
+  console.log(`[callback] code: ${req.query.code}`);
   passport.authenticate('auth0', function (err, user, info) {
     if (err) { return next(err); }
     if (!user) { return res.redirect('/login'); }
@@ -49,6 +51,48 @@ router.get('/logout', (req, res) => {
   logoutURL.search = searchString;
 
   res.redirect(logoutURL);
+});
+
+router.get('/mfa', (req, res) => {
+  var returnTo = req.protocol + '://' + req.hostname;
+  var port = req.connection.localPort;
+  if (port !== undefined && port !== 80 && port !== 443) {
+    returnTo += ':' + port + '/mfa_callback';
+  }
+  let authorizeURL = new url.URL(util.format('https://%s/authorize', process.env.AUTH0_DOMAIN));
+  let queryStr = querystring.stringify({
+    client_id: process.env.AUTH0_CLIENT_ID,
+    audience: 'https://' + process.env.AUTH0_DOMAIN + '/mfa/',
+    scope: 'enroll+read:authenticators+remove:authenticators',
+    response_type: 'code',
+    redirect_uri: returnTo
+  })
+  authorizeURL.search = queryStr;
+  console.log('Sending MFA request: ' + authorizeURL.toJSON());
+  res.redirect(authorizeURL);
+});
+
+router.get('/mfa_callback', async (req, res) => {
+  console.log(`[mfa_callback] code: ${req.query.code}`);
+  var returnTo = req.protocol + '://' + req.hostname;
+  var port = req.connection.localPort;
+  if (port !== undefined && port !== 80 && port !== 443) {
+    returnTo += ':' + port + '/mfa_callback';
+  }
+  try {
+    const post = bent('https://' + process.env.AUTH0_DOMAIN, 'POST', 'json', 200);
+    const response = await post('/oauth/token', {
+      grant_type: 'authorization_code',
+      client_id: process.env.AUTH0_CLIENT_ID,
+      client_secret: process.env.AUTH0_CLIENT_SECRET,
+      code: req.query.code,
+      redirect_uri: returnTo
+    });
+    console.log(`[mfa_callback] oauth token response: ${JSON.stringify(response)}`);
+  } catch (error) {
+    console.log(`[mfa_callback] Error getting oauth token: ${JSON.stringify(error)}`);
+  }
+  res.redirect('/user');
 });
 
 module.exports = router;

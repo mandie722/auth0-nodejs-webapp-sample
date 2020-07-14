@@ -13,6 +13,7 @@ html
       if locals.user
         a(href="/user" id="profileDropDown").w3-bar-item.w3-button Profile
         a(id="qsLogoutBtn" href="/logout").w3-bar-item.w3-button Log Out
+        a(id="qsMFABtn" href="/mfa").w3-bar-item.w3-button Authorize MFA
       else
         a(id="qsLoginBtn" href="/login").w3-bar-item.w3-button Log In
     block content
