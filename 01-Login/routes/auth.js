@@ -4,6 +4,7 @@ var passport = require('passport');
 var dotenv = require('dotenv');
 var util = require('util');
 var bent = require('bent');
+var jwt = require('jsonwebtoken');
 var url = require('url');
 var querystring = require('querystring');
 
@@ -18,10 +19,16 @@ router.get('/login', passport.authenticate('auth0', {
 
 // Perform the final stage of authentication and redirect to previously requested URL or '/user'
 router.get('/callback', function (req, res, next) {
-  console.log(`[callback] code: ${req.query.code}`);
+  console.log(`[callback] query: ${JSON.stringify(req.query, null, 2)}`);
+  console.log(`[callback] cookies: ${JSON.stringify(req.cookies, null, 2)}`);
+  console.log(`[callback] signedCookies: ${JSON.stringify(req.signedCookies, null, 2)}`);
+  console.log(`[callback] headers: ${JSON.stringify(req.headers, null, 2)}`);
+  console.log(`[callback] body: ${JSON.stringify(req.body, null, 2)}`);
   passport.authenticate('auth0', function (err, user, info) {
     if (err) { return next(err); }
     if (!user) { return res.redirect('/login'); }
+    const userJson = user._json;
+    console.log(`[callback] user id_token: ${jwt.sign(userJson, 'encode')}`);
     req.logIn(user, function (err) {
       if (err) { return next(err); }
       const returnTo = req.session.returnTo;
@@ -63,7 +70,7 @@ router.get('/mfa', (req, res) => {
   let queryStr = querystring.stringify({
     client_id: process.env.AUTH0_CLIENT_ID,
     audience: 'https://' + process.env.AUTH0_DOMAIN + '/mfa/',
-    scope: 'enroll+read:authenticators+remove:authenticators',
+    scope: 'enroll read:authenticators remove:authenticators',
     response_type: 'code',
     redirect_uri: returnTo
   })
@@ -88,7 +95,7 @@ router.get('/mfa_callback', async (req, res) => {
       code: req.query.code,
       redirect_uri: returnTo
     });
-    console.log(`[mfa_callback] oauth token response: ${JSON.stringify(response, null, 4)}`);
+    console.log(`[mfa_callback] oauth token response: ${JSON.stringify(response, null, 2)}`);
   } catch (error) {
     console.log(`[mfa_callback] Error getting oauth token: ${JSON.stringify(error)}`);
   }
