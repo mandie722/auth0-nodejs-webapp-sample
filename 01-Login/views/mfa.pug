@@ -1,0 +1,11 @@
+extends layout
+
+block content
+  .w3-card-4
+    h1 MFA Setup
+    p
+      img(src=qr)
+      form(action="/mfa_code_submit" method="POST")
+        p Code:
+          input(type="text" name="code" placeholder="")
+        input(type="submit")

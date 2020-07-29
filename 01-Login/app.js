@@ -1,4 +1,5 @@
 var express = require('express');
+const bodyParser = require("body-parser");
 var path = require('path');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
@@ -11,6 +12,7 @@ var userInViews = require('./lib/middleware/userInViews');
 var authRouter = require('./routes/auth');
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var mfaRouter = require('./routes/mfa');
 
 dotenv.config();
 
@@ -42,6 +44,10 @@ passport.deserializeUser(function (user, done) {
 });
 
 const app = express();
+
+//Here we are configuring express to use body-parser as middle-ware.
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
 // View engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -94,6 +100,7 @@ app.use(userInViews());
 app.use('/', authRouter);
 app.use('/', indexRouter);
 app.use('/', usersRouter);
+app.use('/', mfaRouter);
 
 // Catch 404 and forward to error handler
 app.use(function (req, res, next) {
