@@ -4,7 +4,6 @@ var passport = require('passport');
 var dotenv = require('dotenv');
 var util = require('util');
 const axios = require('axios').default;
-var flash = require('connect-flash');
 var url = require('url');
 var querystring = require('querystring');
 
@@ -91,24 +90,9 @@ router.get('/mfa_callback', async (req, res) => {
   let mfa_token;
   let uds_access_token;
   try {
-    const response = await axios.post('https://' + process.env.AUTH0_DOMAIN + '/oauth/token', {
-      grant_type: 'authorization_code',
-      client_id: process.env.AUTH0_CLIENT_ID,
-      client_secret: process.env.AUTH0_CLIENT_SECRET,
-      code: req.query.code,
-      redirect_uri: returnTo
-    });
-    console.log(`[mfa_callback] mfa oauth token response: ${JSON.stringify(response.data, null, 2)}`);
-    mfa_token = response.data.access_token;
+    mfa_token = await getMfaToken(req.query.code, returnTo);
     req.session.mfa_token = mfa_token;
-    const response_uds_token = await axios.post('https://' + process.env.AUTH0_DOMAIN + '/oauth/token', {
-      grant_type: 'client_credentials',
-      audience: 'https://c12s-dataservices-api',
-      client_id: process.env.AUTH0_CLIENT_ID,
-      client_secret: process.env.AUTH0_CLIENT_SECRET
-    });
-    console.log(`[mfa_callback] uds oauth token response: ${JSON.stringify(response_uds_token.data, null, 2)}`);
-    uds_access_token = response_uds_token.data.access_token;
+    uds_access_token = await getUdsToken();
     req.session.uds_access_token = uds_access_token;
   } catch (err) {
     const message = `Error getting oauth token: ${JSON.stringify(err)}`;
@@ -118,6 +102,7 @@ router.get('/mfa_callback', async (req, res) => {
     return;
   }
 
+  console.log(`[mfa_callback] state: ${req.query.state}`);
   if (req.query.state === '/setup_mfa') {
     try {
       const response_uds = await axios.post(process.env.UDS_URL + '/api/v1/utils/initiate_mfa', {
@@ -150,13 +135,37 @@ router.get('/mfa_callback', async (req, res) => {
       }
     });
     console.log(`[mfa_callback] disable_mfa successful`);
+    req.flash('info', 'Disable MFA successful');
   } catch (err) {
     const message = `Error calling disable mfa: ${JSON.stringify(err)}`;
     console.log(`[mfa_callback] ${message}`);
-    flash('error', message);
-    res.redirect('/user');
-    return;
+    req.flash('error', message);
   }
+  res.redirect('/user');
+  return;
 });
+
+async function getMfaToken(code, returnTo) {
+  const response = await axios.post('https://' + process.env.AUTH0_DOMAIN + '/oauth/token', {
+    grant_type: 'authorization_code',
+    client_id: process.env.AUTH0_CLIENT_ID,
+    client_secret: process.env.AUTH0_CLIENT_SECRET,
+    code: code,
+    redirect_uri: returnTo
+  });
+  console.log(`[getMfaToken] mfa oauth token response: ${JSON.stringify(response.data, null, 2)}`);
+  return response.data.access_token;
+}
+
+async function getUdsToken() {
+  const response_uds_token = await axios.post('https://' + process.env.AUTH0_DOMAIN + '/oauth/token', {
+    grant_type: 'client_credentials',
+    audience: 'https://c12s-dataservices-api',
+    client_id: process.env.AUTH0_CLIENT_ID,
+    client_secret: process.env.AUTH0_CLIENT_SECRET
+  });
+  console.log(`[getUdsToken] uds oauth token response: ${JSON.stringify(response_uds_token.data, null, 2)}`);
+  return response_uds_token.data.access_token;
+}
 
 module.exports = router;

@@ -4,6 +4,10 @@ block content
   .w3-card-4
     h1 Welcome #{user.nickname}
     img(src=user.picture)
+    if error
+      p.red #{error}
+    if message
+      p #{message}
     h2 User profile
     p This is the content of <code>req.user</code>.
     p Note: <code>_raw</code> properties have been omitted.

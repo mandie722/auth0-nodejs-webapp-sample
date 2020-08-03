@@ -3,6 +3,11 @@
     text-decoration: none;
 }
 
+#red p {
+    color: #ff0000;
+    text-decoration: none;
+}
+
 pre {
     text-align: left;
     font-family: 'Courier New', Courier, monospace;

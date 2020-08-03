@@ -1,7 +1,6 @@
 var express = require('express');
 var QRCode = require('qrcode');
 var secured = require('../lib/middleware/secured');
-var flash = require('connect-flash');
 const axios = require('axios').default;
 var router = express.Router();
 
@@ -11,7 +10,8 @@ router.get('/mfa', secured(), async (req, res) => {
   const qr = await QRCode.toDataURL(req.session.barcode_uri)
   res.render('mfa', {
     qr: qr,
-    title: 'MFA page'
+    title: 'MFA page',
+    message: req.flash('info')
   });
 });
 
@@ -34,12 +34,12 @@ router.post('/mfa_code_submit', secured(), async (req, res) => {
     });
     console.log(`[mfa_code_submit] enable_mfa response ${JSON.stringify(response_uds.data, null, 2)}`);
     const recovery_codes = response_uds.data.recoveryCodes;
-    flash('info', `Recovery Codes: ${recovery_codes}`)
+    req.flash('info', `Recovery Codes: ${recovery_codes}`)
   } catch (err) {
     const message = `Error calling enable mfa: ${JSON.stringify(err)}`;
     console.log(`[mfa_code_submit] ${message}`);
     console.trace(err);
-    flash('error', message);
+    req.flash('error', message);
     res.redirect('/mfa');
     return;
   }
